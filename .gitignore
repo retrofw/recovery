@@ -1,1 +1,6 @@
 S80recovery
+retrofw
+*.bak
+work/
+src/fatresize.h
+src/opkscan.h
