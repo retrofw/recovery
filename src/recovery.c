@@ -569,6 +569,7 @@ int main(int argc, char* argv[]) {
 		quit(0); return 0;
 	}
 
+	setenv("SDL_FBCON_DONT_CLEAR", "1", 1);
 	setenv("SDL_NOMOUSE", "1", 1);
 	setenv("TERM", "vt100", 1);
 	setenv("HOME", "/home/retrofw", 1);
