@@ -1,7 +1,7 @@
 CHAINPREFIX=/opt/mipsel-linux-uclibc
 CROSS_COMPILE=$(CHAINPREFIX)/usr/bin/mipsel-linux-
 
-BUILDTIME=$(shell date +'\"%Y-%m-%d %H:%M\"')
+BUILDTIME := $(shell date +%s)
 
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++

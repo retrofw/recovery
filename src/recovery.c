@@ -15,6 +15,8 @@
 #include <linux/kd.h>
 #include <linux/fb.h>
 #include <linux/fs.h>
+#include <ctime>
+#include <sys/time.h>   /* for settimeofday() */
 
 #ifndef TARGET_RETROFW
 	#define system(x) printf(x); printf("\n")
@@ -451,8 +453,29 @@ struct callback_map_t cb_map[] = {
 };
 unsigned int cb_size = (sizeof(cb_map) / sizeof(cb_map[0]));
 
+void sync_date_time(time_t t) {
+#if defined(TARGET_RETROFW)
+	struct timeval tv = { t, 0 };
+	settimeofday(&tv, NULL);
+	system("hwclock --systohc &");
+#endif
+}
+
+void init_date_time() {
+	system("hwclock --hctosys");
+
+	time_t now = time(0);
+	const uint32_t t = __BUILDTIME__;
+
+	if (now < t) {
+		sync_date_time(t);
+	}
+}
+
 int main(int argc, char* argv[]) {
 	keys = SDL_GetKeyState(NULL);
+
+	init_date_time();
 
 	if (argc > 1 && !strcmp(argv[1], "stop")) {
 		system("hwclock --systohc");
