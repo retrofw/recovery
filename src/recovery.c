@@ -3,7 +3,6 @@
 #include <SDL/SDL_ttf.h>
 #include "font.h"
 #include "background.h"
-#include "fatresize.h"
 #include "opkscan.h"
 #include <fcntl.h>
 #include <unistd.h>
@@ -164,14 +163,22 @@ int check_part() {
 }
 
 void fsck() {
-	nextline = draw_screen("CHECK FILE SYSTEM", "");
-	nextline = draw_text(10, nextline, "Checking partitions", txtColor);
+	nextline = draw_screen("FILE SYSTEM CHECK", "");
+	nextline = draw_text(10, nextline, "Checking file system", txtColor);
 	nextline = draw_text(10, nextline, "This may take several minutes", txtColor);
 	nextline = draw_text(10, nextline, "Please wait...", txtColor);
 	SDL_Flip(screen);
 
 	DBG("");
-	system("mount -o remount,rw /; rm '/var/.fsck'; mount -o remount,ro");
+
+	if (file_exists("/var/.fsck")) {
+		// first boot. remove fsck flag
+		system("mount -o remount,rw /; rm '/var/.fsck'; mount -o remount,ro");
+	} else {
+		// check external fs only after first boot (manual trigger)
+		system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
+	}
+
 	system("umount -fl /home/retrofw $(readlink -f /dev/root | head -c -2)3 &> /dev/null");
 	system("fsck.vfat -va $(readlink -f /dev/root | head -c -2)3");
 	// system("fsck.vfat -va $(ls /dev/mmcblk0* | tail -n 1)");
@@ -179,8 +186,6 @@ void fsck() {
 
 	nextline = draw_text(10, nextline, "Done. Rebooting...", txtColor);
 	SDL_Flip(screen);
-
-	SDL_Delay(2e3);
 
 	reboot();
 }
@@ -213,60 +218,27 @@ void fatsize(char *size) {
 }
 
 void fatresize() {
-	char oldsize[32], newsize[32];
 	DBG("");
-	nextline = draw_screen("PARTITION EXTENDER", "");
-	nextline = draw_text(10, nextline, "Expanding data partition", txtColor);
+	nextline = draw_screen("PARTITION MANAGER", "");
+	nextline = draw_text(10, nextline, "Updating partition table", txtColor);
 	nextline = draw_text(10, nextline, "This may take several minutes", txtColor);
 	nextline = draw_text(10, nextline, "Please wait...", txtColor);
-
-	fatsize(oldsize);
-
-	nextline = draw_text(10, nextline, " ", txtColor);
-	draw_text(10, nextline, "Current size:", txtColor);
-	nextline = draw_text(140, nextline, oldsize, powerColor);
 
 	SDL_Flip(screen);
 
 #ifdef TARGET_RETROFW
 	system("mount -o remount,rw /; rm '/var/.prsz'; mount -o remount,ro");
-	system("umount -fl /home/retrofw $(ls --color=never /dev/mmcblk0* | tail -n 1) /dev/mmcblk1* &> /dev/null");
-
-	FILE *fp = popen("gunzip | sh &> /dev/null", "w");
-	if (!fp) return;
-	for (uint16_t i = 0; i < sizeof(_fatresize) ; i++) fputc(_fatresize[i], fp);
-	pclose(fp);
+	system("sync; umount -fl /home/retrofw $(ls --color=never /dev/mmcblk0* | tail -n 1) /dev/mmcblk1* &> /dev/null");
+	system("echo \"start= 342016, size= 460800, type=82\n start= 802816, type=c\" | sfdisk --append --no-reread $(readlink -f /dev/root | head -c -3)");
 
 	system("sync");
 #endif
 
-	fatsize(newsize);
-	SDL_Flip(screen);
-
-	draw_text(10, nextline, "New size:", txtColor);
-	nextline = draw_text(140, nextline, newsize, subTitleColor);
-	// nextline = draw_text(10, nextline, buf, txtColor);
-
-	if (!strcmp(oldsize, newsize)) {
-		nextline = draw_text(10, nextline, " ", txtColor);
-		nextline = draw_text(10, nextline, "OLD AND NEW SIZES ARE THE SAME", powerColor);
-		nextline = draw_text(10, nextline, "The partition wasn't resized", powerColor);
-
-		draw_text(10, 222, "SELECT: CONTINUE", powerColor);
-
-		SDL_Flip(screen);
-		while (1) {
-			if (SDL_WaitEvent(&event) && event.type == SDL_KEYDOWN && event.key.keysym.sym == BTN_SELECT) { // SELECT
-				break;
-			}
-		}
-	}
-
-	nextline = draw_text(10, nextline, "Rebooting...", txtColor);
+	nextline = draw_text(10, nextline, "Done. Rebooting...", txtColor);
 
 	SDL_Flip(screen);
 
-	SDL_Delay(2e3);
+	SDL_Delay(1e3);
 
 	reboot();
 }
@@ -356,12 +328,13 @@ void format_int() {
 	SDL_Flip(screen);
 
 	system("sync; umount -fl /home/retrofw $(readlink -f /dev/root | head -c -2)3 &> /dev/null");
-	system("mkfs.vfat -n 'RetroFW' $(readlink -f /dev/root | head -c -2)3");
+	system("mkswap $(readlink -f /dev/root | head -c -2)2");
+	system("mkfs.vfat -F32 -va -n 'RETROFW' $(readlink -f /dev/root | head -c -2)3");
 	// system("mount -o remount,rw /; touch '/var/.fsck'; rm '/var/.defl'; mount -o remount,ro /");
-	system("mount -o remount,rw /; rm '/var/.defl'; mount -o remount,ro /");
 	// system("mount -o remount,rw /; touch '/var/.fsck' '/var/.prsz'; mount -o remount,ro /");
 	system("mount -a");
 	system("gunzip -c /home/.retrofw.tar.gz | tar -C /home/retrofw/ -x");
+	system("mount -o remount,rw /; rm '/var/.defl'; mount -o remount,ro /");
 
 	fsck();
 }
@@ -521,7 +494,7 @@ int main(int argc, char* argv[]) {
 	close(memdev);
 #endif
 
-	int mode = check_part();
+	int mode = MODE_UNKNOWN;
 
 	if (((keys[BTN_POWER] == SDL_PRESSED || keys[BTN_SELECT] == SDL_PRESSED) && keys[BTN_Y] == SDL_PRESSED) || (argc > 2 && !strcmp(argv[1], "network") && !strcmp(argv[2], "on"))) {
 		// hold boot - network - no gui - for debugging
@@ -545,7 +518,11 @@ int main(int argc, char* argv[]) {
 		}
 
 		return 0;
-	} else if (argc > 1 && !strcmp(argv[1], "network")) {
+	}
+
+	mode = check_part();
+
+	if (argc > 1 && !strcmp(argv[1], "network")) {
 		sprintf(title, "NETWORK MODE");
 		mode = MODE_NETWORK;
 	} else if (argc > 1 && !strcmp(argv[1], "storage")) {
