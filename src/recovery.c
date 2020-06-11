@@ -179,8 +179,8 @@ void fsck() {
 		system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
 	}
 
-	system("umount -fl /dev/mmcblk0p3 &> /dev/null");
-	system("fsck.vfat -va /dev/mmcblk0p3");
+	system("umount -fl /dev/mmcblk0p2 &> /dev/null");
+	system("fsck.vfat -va /dev/mmcblk0p2");
 	// system("fsck.vfat -va $(ls /dev/mmcblk0* | tail -n 1)");
 	// system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
 
@@ -223,7 +223,7 @@ void fatresize() {
 #ifdef TARGET_RETROFW
 	system("mount -o remount,rw /boot; rm '/boot/.prsz'; mount -o remount,ro /boot");
 	system("sync; umount -fl /home/retrofw $(ls --color=never /dev/mmcblk0* | tail -n 1) /dev/mmcblk1* &> /dev/null");
-	system("echo \"start= 342016, size= 460800, type=82\n start= 802816, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
+	system("echo \"start= 342016, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
 
 	system("sync");
 #endif
@@ -321,11 +321,8 @@ void format_int() {
 	nextline = draw_text(10, nextline, "Please wait...", txtColor);
 	SDL_Flip(screen);
 
-	system("sync; umount -fl /dev/mmcblk0p3 &> /dev/null");
-	system("mkswap /dev/mmcblk0p2");
-	system("mkfs.vfat -F32 -va -n 'RETROFW' /dev/mmcblk0p3");
-	// system("mount -o remount,rw /; touch '/var/.fsck'; rm '/var/.defl'; mount -o remount,ro /");
-	// system("mount -o remount,rw /; touch '/var/.fsck' '/var/.prsz'; mount -o remount,ro /");
+	system("sync; umount -fl /dev/mmcblk0p2 &> /dev/null");
+	system("mkfs.vfat -F32 -va -n 'RETROFW' /dev/mmcblk0p2");
 	system("mount -a");
 	system("gunzip -c /home/.retrofw.tar.gz | tar -C /home/retrofw/ -x");
 	system("mount -o remount,rw /boot; rm '/boot/.defl'; mount -o remount,ro /boot");
@@ -549,6 +546,10 @@ int main(int argc, char* argv[]) {
 
 	if (mode == MODE_START) {
 		if (file_exists("/home/retrofw/autoexec.sh")) {
+		if (file_exists("/root/swap.img") || file_exists("/root/local/swap.img")) {
+			system("swapon /root/swap.img /root/local/swap.img");
+		}
+
 			execlp("/bin/sh", "/bin/sh", "-c", "source /home/retrofw/autoexec.sh", NULL);
 			usleep(5000000);
 		} else if (file_exists("/home/retrofw/apps/gmenu2x/gmenu2x")) {
