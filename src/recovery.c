@@ -156,9 +156,9 @@ int draw_screen(const char title[64], const char footer[64]) {
 
 int check_part() {
 	DBG("");
-	if (file_exists("/var/.prsz")) return MODE_RESIZE;
-	if (file_exists("/var/.defl")) return MODE_DEFL;
-	if (file_exists("/var/.fsck")) return MODE_FSCK;
+	if (file_exists("/boot/.prsz")) return MODE_RESIZE;
+	if (file_exists("/boot/.defl")) return MODE_DEFL;
+	if (file_exists("/boot/.fsck")) return MODE_FSCK;
 	return MODE_UNKNOWN;
 }
 
@@ -171,16 +171,16 @@ void fsck() {
 
 	DBG("");
 
-	if (file_exists("/var/.fsck")) {
+	if (file_exists("/boot/.fsck")) {
 		// first boot. remove fsck flag
-		system("mount -o remount,rw /; rm '/var/.fsck'; mount -o remount,ro");
+		system("mount -o remount,rw /boot; rm '/boot/.fsck'; mount -o remount,ro /boot");
 	} else {
 		// check external fs only after first boot (manual trigger)
 		system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
 	}
 
-	system("umount -fl /home/retrofw $(readlink -f /dev/root | head -c -2)3 &> /dev/null");
-	system("fsck.vfat -va $(readlink -f /dev/root | head -c -2)3");
+	system("umount -fl /dev/mmcblk0p3 &> /dev/null");
+	system("fsck.vfat -va /dev/mmcblk0p3");
 	// system("fsck.vfat -va $(ls /dev/mmcblk0* | tail -n 1)");
 	// system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
 
@@ -198,13 +198,7 @@ void fatsize(char *size) {
 
 	sprintf(size, "N/A");
 
-	char sdcard[128] = {0};
-	readlink("/dev/root", sdcard, sizeof(sdcard));
-	sdcard[strlen(sdcard)-1] = 0;
-
-	snprintf(buf, sizeof(buf), "/dev/%s3", sdcard);
-
-	int fd = open(buf, O_RDONLY);
+	int fd = open("/dev/mmcblk0p3", O_RDONLY);
 	uint64_t bsize = 0;
 	ioctl(fd, BLKGETSIZE, &bsize);
 	close(fd);
@@ -227,9 +221,9 @@ void fatresize() {
 	SDL_Flip(screen);
 
 #ifdef TARGET_RETROFW
-	system("mount -o remount,rw /; rm '/var/.prsz'; mount -o remount,ro");
+	system("mount -o remount,rw /boot; rm '/boot/.prsz'; mount -o remount,ro /boot");
 	system("sync; umount -fl /home/retrofw $(ls --color=never /dev/mmcblk0* | tail -n 1) /dev/mmcblk1* &> /dev/null");
-	system("echo \"start= 342016, size= 460800, type=82\n start= 802816, type=c\" | sfdisk --append --no-reread $(readlink -f /dev/root | head -c -3)");
+	system("echo \"start= 342016, size= 460800, type=82\n start= 802816, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
 
 	system("sync");
 #endif
@@ -327,14 +321,14 @@ void format_int() {
 	nextline = draw_text(10, nextline, "Please wait...", txtColor);
 	SDL_Flip(screen);
 
-	system("sync; umount -fl /home/retrofw $(readlink -f /dev/root | head -c -2)3 &> /dev/null");
-	system("mkswap $(readlink -f /dev/root | head -c -2)2");
-	system("mkfs.vfat -F32 -va -n 'RETROFW' $(readlink -f /dev/root | head -c -2)3");
+	system("sync; umount -fl /dev/mmcblk0p3 &> /dev/null");
+	system("mkswap /dev/mmcblk0p2");
+	system("mkfs.vfat -F32 -va -n 'RETROFW' /dev/mmcblk0p3");
 	// system("mount -o remount,rw /; touch '/var/.fsck'; rm '/var/.defl'; mount -o remount,ro /");
 	// system("mount -o remount,rw /; touch '/var/.fsck' '/var/.prsz'; mount -o remount,ro /");
 	system("mount -a");
 	system("gunzip -c /home/.retrofw.tar.gz | tar -C /home/retrofw/ -x");
-	system("mount -o remount,rw /; rm '/var/.defl'; mount -o remount,ro /");
+	system("mount -o remount,rw /boot; rm '/boot/.defl'; mount -o remount,ro /boot");
 
 	fsck();
 }
