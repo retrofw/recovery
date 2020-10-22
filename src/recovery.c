@@ -603,8 +603,9 @@ int main(int argc, char* argv[]) {
 		} else if (file_exists("/home/retrofw/autoexec.sh")) {
 			execlp("/bin/sh", "/bin/sh", "-c", "source /home/retrofw/autoexec.sh", NULL);
 			usleep(5000000);
-		} else if (file_exists("/home/retrofw/apps/gmenu2x/gmenu2x")) {
-			execlp("/home/retrofw/apps/gmenu2x/gmenu2x", "/home/retrofw/apps/gmenu2x/gmenu2x", NULL);
+		} else if (execlp("/usr/bin/gmenunx", "/usr/bin/gmenunx", NULL)) {
+			usleep(5000000);
+		} else if (execlp("/home/retrofw/apps/gmenu2x/gmenu2x", "/home/retrofw/apps/gmenu2x/gmenu2x", NULL)) {
 			usleep(5000000);
 		} else {
 			mode = MODE_MENU;
