@@ -93,6 +93,45 @@ uint8_t file_exists(const char path[512]) {
 	return !!(stat(path, &s) == 0 && (s.st_mode & S_IFREG || s.st_mode & S_IFBLK)); // exists and is file or block
 }
 
+// To return char for a value. For example '2'
+// is returned for 2. 'A' is returned for 10. 'B'
+// for 11
+char reVal(int num) {
+	if (num >= 0 && num <= 9)
+		return (char)(num + '0');
+
+	return (char)(num - 10 + 'A');
+}
+
+// Utility function to reverse a string
+void strev(char *str) {
+	int len = strlen(str);
+	for (int i = 0; i < len / 2; i++) {
+		char temp = str[i];
+		str[i] = str[len - i - 1];
+		str[len - i - 1] = temp;
+	}
+}
+
+// Function to convert a given decimal number
+// to a base 'base' and
+char* deci2base(char res[], int base, int inputNum) {
+	int index = 0;  // Initialize index of result
+
+	// Convert input number is given base by repeatedly
+	// dividing it by base and taking remainder
+	while (inputNum > 0) {
+		res[index++] = reVal(inputNum % base);
+		inputNum /= base;
+	}
+	res[index] = '\0';
+
+	// Reverse the result
+	strev(res);
+
+	return res;
+}
+
 void quit(int err) {
 	DBG("");
 	system("sync");
@@ -139,6 +178,7 @@ int draw_screen(const char title[64], const char footer[64]) {
 	// title
 	draw_text(247, 4, "RetroFW", titleColor);
 	draw_text(10, 4, title, titleColor);
+	draw_text(255, 222, deci2base(buf, 64, __BUILDTIME__), (SDL_Color){200, 200, 20});
 
 	rect.w = WIDTH - 20;
 	rect.h = 1;
