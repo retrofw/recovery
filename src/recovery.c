@@ -251,32 +251,6 @@ void fatsize(char *size) {
 		sprintf(size, "%d MiB", totalMiB);
 }
 
-void fatresize() {
-	DBG("");
-	nextline = draw_screen("PARTITION MANAGER", "");
-	nextline = draw_text(10, nextline, "Updating partition table", txtColor);
-	nextline = draw_text(10, nextline, "This may take several minutes", txtColor);
-	nextline = draw_text(10, nextline, "Please wait...", txtColor);
-
-	SDL_Flip(screen);
-
-#ifdef TARGET_RETROFW
-	system("mount -o remount,rw /boot; rm '/boot/.prsz'; mount -o remount,ro /boot");
-	system("sync; umount -fl /home/retrofw $(ls --color=never /dev/mmcblk0* | tail -n 1) /dev/mmcblk1* &> /dev/null");
-	system("echo \"start= 342016, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
-
-	system("sync");
-#endif
-
-	nextline = draw_text(10, nextline, "Done. Rebooting...", txtColor);
-
-	SDL_Flip(screen);
-
-	SDL_Delay(1e3);
-
-	reboot();
-}
-
 void udc() {
 	DBG("");
 
@@ -390,6 +364,29 @@ void format_int() {
 	system("mount -o remount,rw /boot; rm '/boot/.defl'; mount -o remount,ro /boot");
 
 	fsck();
+}
+
+void fatresize() {
+	DBG("");
+	nextline = draw_screen("PARTITION MANAGER", "");
+	nextline = draw_text(10, nextline, "Updating partition table", txtColor);
+	nextline = draw_text(10, nextline, "This may take several minutes", txtColor);
+	nextline = draw_text(10, nextline, "Please wait...", txtColor);
+	SDL_Flip(screen);
+
+#ifdef TARGET_RETROFW
+	system("rm /boot/.prsz");
+	system("sync; swapoff -a");
+	system("umount -fl /home/retrofw /dev/mmcblk*");
+	system("echo \"start=278527, size=128M, type=82\" | sfdisk --append --no-reread /dev/mmcblk0");
+	system("echo \"start=540671, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
+	system("partprobe");
+#endif
+
+	nextline = draw_text(10, nextline, "Done. Rebooting...", txtColor);
+	SDL_Flip(screen);
+	SDL_Delay(1e3);
+	reboot();
 }
 
 void data_reset() {
