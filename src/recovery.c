@@ -357,12 +357,12 @@ void format_int() {
 	nextline = draw_text(10, nextline, "Please wait...", txtColor);
 	SDL_Flip(screen);
 
-	system("sync; umount -fl /dev/mmcblk0p2 &> /dev/null");
-	system("mkfs.vfat -F32 -va -n 'RETROFW' /dev/mmcblk0p2");
-	system("mount -a");
-	system("gunzip -c /home/.retrofw.tar.gz | tar -C /home/retrofw/ -x");
-	system("mount -o remount,rw /boot; rm '/boot/.defl'; mount -o remount,ro /boot");
-
+	system("sync; swapoff -a");
+	system("umount -fl /home/retrofw /dev/mmcblk*");
+	system("fatlabel /dev/mmcblk0p1 rootfs");
+	system("mkfs.vfat -F32 -va -n 'RETROFW' /dev/mmcblk0p3");
+	system("mkswap /dev/mmcblk0p2");
+	system("rm /boot/.defl");
 	fsck();
 }
 
