@@ -332,12 +332,13 @@ void format_ext() {
 			nextline = draw_text(10, nextline, "Please wait...", txtColor);
 			SDL_Flip(screen);
 
-			system("sync; umount -fl /dev/mmcblk1* &> /dev/null");
+			system("sync; swapoff -a");
+			system("umount -fl /dev/mmcblk1* &> /dev/null");
 			system("(echo o; echo n; echo p; echo 1; echo  ; echo  ; echo w; ) | fdisk /dev/mmcblk1");
 			// system("echo 'start=2048, type=83' | sfdisk /dev/mmcblk1");
 
 			system("sync; partprobe; mdev -s");
-			system("mkfs.vfat -F32 -va -n 'RetroFW_SD' /dev/mmcblk1p1");
+			system("mkfs.vfat -F32 -va -n 'RETROFW_SD' /dev/mmcblk1p1");
 			system("mdev -s; mount -a");
 
 			nextline = draw_text(10, nextline, "Done.", txtColor);
