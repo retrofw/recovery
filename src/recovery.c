@@ -593,11 +593,14 @@ int main(int argc, char* argv[]) {
 	free_tty();
 
 	if (mode == MODE_START) {
-		if (file_exists("/home/retrofw/autoexec.sh")) {
 		if (file_exists("/root/swap.img") || file_exists("/root/local/swap.img")) {
 			system("swapon /root/swap.img /root/local/swap.img");
 		}
 
+		if (file_exists("/media/mmcblk1p1/autoexec.sh")) {
+			execlp("/bin/sh", "/bin/sh", "-c", "source /media/mmcblk1p1/autoexec.sh", NULL);
+			usleep(5000000);
+		} else if (file_exists("/home/retrofw/autoexec.sh")) {
 			execlp("/bin/sh", "/bin/sh", "-c", "source /home/retrofw/autoexec.sh", NULL);
 			usleep(5000000);
 		} else if (file_exists("/home/retrofw/apps/gmenu2x/gmenu2x")) {
