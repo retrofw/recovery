@@ -213,16 +213,15 @@ void fsck() {
 
 	if (file_exists("/boot/.fsck")) {
 		// first boot. remove fsck flag
-		system("mount -o remount,rw /boot; rm '/boot/.fsck'; mount -o remount,ro /boot");
+		system("rm /boot/.fsck");
 	} else {
 		// check external fs only after first boot (manual trigger)
-		system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
+		system("fsck.vfat -va $(ls --color=never /dev/mmcblk1* | tail -n 1)");
 	}
 
-	system("umount -fl /dev/mmcblk0p2 &> /dev/null");
-	system("fsck.vfat -va /dev/mmcblk0p2");
-	// system("fsck.vfat -va $(ls /dev/mmcblk0* | tail -n 1)");
-	// system("fsck.vfat -va $(ls /dev/mmcblk1* | tail -n 1)");
+	system("sync; swapoff -a");
+	system("umount -fl /home/retrofw $(ls --color=never /dev/mmcblk0* | tail -n 1)");
+	system("fsck.vfat -va $(ls --color=never /dev/mmcblk0* | tail -n 1)");
 
 	nextline = draw_text(10, nextline, "Done. Rebooting...", txtColor);
 	SDL_Flip(screen);
