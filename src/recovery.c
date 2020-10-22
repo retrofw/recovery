@@ -276,6 +276,28 @@ void network() {
 	}
 }
 
+void network_ascii() {
+	DBG("");
+	font = NULL;
+	SDL_Quit();
+	TTF_Quit();
+
+	system("modprobe fbcon");
+	system("echo -e \"\e[1;36m ____      _            \e[31m _____ _     _\" > /dev/tty0");
+	system("echo -e \"\e[36m|  _ \\ ___| |_ _ __ ___ \e[31m|  ___| | _ | |\" > /dev/tty0");
+	system("echo -e \"\e[36m| |_) / _ \\ __| '__/ _ \\\\\e[31m| |__ | |/ \\| |\" > /dev/tty0");
+	system("echo -e \"\e[36m|  _ <  __/ |_| | | '_' \e[31m|  __||  .-.  |\" > /dev/tty0");
+	system("echo -e \"\e[36m|_| \\_\\___|\\__|_|  \\___/\e[31m|_|   |_/   \\_|\" > /dev/tty0");
+	system("echo -e \"\e[0;37m\" > /dev/tty0");
+
+	system("echo '- Set up the USB network in your PC' > /dev/tty0");
+	system("echo '- FTP or Telnet to 169.254.1.1' > /dev/tty0");
+	system("echo '- Copy the files/run shell commands' > /dev/tty0");
+	system("echo '- Power off and reboot' > /dev/tty0");
+
+	while (1) sleep(1000000);
+}
+
 void format_ext() {
 	nextline = draw_screen("FORMAT EXT SD", "SELECT + Y: CONFIRM     B: CANCEL");
 	nextline = draw_text(10, nextline, "WARNING", powerColor);
@@ -406,8 +428,8 @@ void free_tty() {
 }
 
 struct callback_map_t cb_map[] = {
+  { "Network Mode", network_ascii },
   { "USB Mode", udc },
-  { "Network Mode", network },
   { "Check File System", fsck },
   // { "Resize File System", fatresize },
   { "Data Reset", data_reset },
@@ -491,21 +513,7 @@ int main(int argc, char* argv[]) {
 		// hold boot - network - no gui - for debugging
 		system("rmmod g_file_storage; modprobe g_ether; ifdown usb0; ifup usb0");
 		if (!(argc > 2 && !strcmp(argv[1], "network") && !strcmp(argv[2], "on"))) {
-			system("modprobe fbcon");
-
-			system("echo -e \"\e[1;36m ____      _            \e[31m _____ _     _\" > /dev/tty0");
-			system("echo -e \"\e[36m|  _ \\ ___| |_ _ __ ___ \e[31m|  ___| | _ | |\" > /dev/tty0");
-			system("echo -e \"\e[36m| |_) / _ \\ __| '__/ _ \\\\\e[31m| |__ | |/ \\| |\" > /dev/tty0");
-			system("echo -e \"\e[36m|  _ <  __/ |_| | | '_' \e[31m|  __||  .-.  |\" > /dev/tty0");
-			system("echo -e \"\e[36m|_| \\_\\___|\\__|_|  \\___/\e[31m|_|   |_/   \\_|\" > /dev/tty0");
-			system("echo -e \"\e[0;37m\" > /dev/tty0");
-
-			system("echo '- Set up the USB network in your PC' > /dev/tty0");
-			system("echo '- FTP or Telnet to 169.254.1.1' > /dev/tty0");
-			system("echo '- Copy the files/run shell commands' > /dev/tty0");
-			system("echo '- Power off and reboot' > /dev/tty0");
-
-			while (argc <= 2) sleep(1000000);
+			network_ascii();
 		}
 
 		return 0;
@@ -557,6 +565,7 @@ int main(int argc, char* argv[]) {
 			usleep(5000000);
 		} else {
 			mode = MODE_MENU;
+			system("modprobe fbcon");
 		}
 	}
 
@@ -611,7 +620,7 @@ int main(int argc, char* argv[]) {
 			udc();
 			break;
 		case MODE_NETWORK:
-			network();
+			network_ascii();
 			break;
 		case MODE_MENU:
 			goto mode_menu;
