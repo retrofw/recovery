@@ -26,7 +26,7 @@ all:
 	$(CXX) $(CFLAGS) $(LDFLAGS) src/recovery.c -o retrofw
 
 pc:
-	gcc src/recovery.c -g -o retrofw -ggdb -O0 -DDEBUG -lSDL_image -lSDL -lSDL_ttf -I/usr/include/SDL
+	g++ src/recovery.c -g -o retrofw -D__BUILDTIME__="$(BUILDTIME)" -ggdb -O0 -DDEBUG -lSDL_image -lSDL -lSDL_ttf -I/usr/include/SDL
 
 clean:
 	rm -rf retrofw
