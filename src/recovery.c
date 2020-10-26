@@ -587,6 +587,12 @@ int main(int argc, char* argv[]) {
 	setenv("TERM", "vt100", 1);
 	setenv("HOME", "/home/retrofw", 1);
 
+	if (file_exists("/proc/jz/gpio")) {
+		setenv("SDL_AUDIODRIVER", "dsp", 1);
+	} else {
+		setenv("SDL_AUDIODRIVER", "alsa", 1);
+	}
+
 	free_tty();
 
 	if (mode == MODE_START) {
