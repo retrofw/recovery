@@ -18,9 +18,6 @@
 
 #ifndef TARGET_RETROFW
 	#define system(x) printf(x); printf("\n")
-#endif
-
-#ifndef TARGET_RETROFW
 	#define DBG(x) printf("%s:%d %s %s\n", __FILE__, __LINE__, __func__, x);
 #else
 	#define DBG(x)
@@ -52,13 +49,12 @@
 #define BTN_LEFT		SDLK_LEFT
 #define BTN_RIGHT		SDLK_RIGHT
 
+uint8_t *keys = SDL_GetKeyState(NULL);
+
 TTF_Font *font = NULL;
 SDL_Surface *screen = NULL;
-// SDL_Surface *StretchSurface = NULL;
 SDL_Surface *bg = NULL;
 SDL_Event event;
-
-uint8_t *keys;
 
 SDL_Color txtColor = {200, 200, 220};
 SDL_Color titleColor = {200, 200, 0};
@@ -68,16 +64,13 @@ SDL_Color powerColor = {200, 0, 0};
 static char buf[1024];
 uint8_t nextline = 24;
 
-int memdev = -1;
-uint32_t *mem;
-
 enum modes {
-	MODE_UNKNOWN,
 	MODE_UDC,
 	MODE_NETWORK,
 	MODE_RESIZE,
 	MODE_FSCK,
 	MODE_DEFL,
+	MODE_CLS,
 	MODE_START,
 	MODE_MENU
 };
@@ -198,7 +191,7 @@ int check_part() {
 	if (file_exists("/boot/.prsz")) return MODE_RESIZE;
 	if (file_exists("/boot/.defl")) return MODE_DEFL;
 	if (file_exists("/boot/.fsck")) return MODE_FSCK;
-	return MODE_UNKNOWN;
+	return MODE_START;
 }
 
 void fsck() {
@@ -289,10 +282,7 @@ void network() {
 }
 
 void network_ascii() {
-	DBG("");
-	font = NULL;
-	SDL_Quit();
-	TTF_Quit();
+	system("rmmod g_file_storage; modprobe g_ether; ifdown usb0; ifup usb0");
 
 	system("modprobe fbcon");
 	system("echo -e \"\e[1;36m ____      _            \e[31m _____ _     _\" > /dev/tty0");
@@ -436,14 +426,14 @@ void opkrun(int argc, char* argv[]) {
 	execlp("/bin/sh", "/bin/sh", "-c", buf, NULL);
 }
 
-void free_tty() {
+void cls() {
 	int fd = open("/dev/tty0", O_RDONLY);
 	if (fd > 0) {
 		ioctl(fd, VT_UNLOCKSWITCH, 1);
 		ioctl(fd, KDSETMODE, KD_TEXT);
 		ioctl(fd, KDSKBMODE, K_XLATE);
+		close(fd);
 	}
-	close(fd);
 }
 
 struct callback_map_t cb_map[] = {
@@ -477,8 +467,20 @@ void init_date_time() {
 	}
 }
 
+void sdl_init() {
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+		printf("Could not initialize SDL: %s\n", SDL_GetError());
+		network_ascii();
+	}
+
+	SDL_ShowCursor(SDL_DISABLE);
+	screen = SDL_SetVideoMode(WIDTH, HEIGHT, 16, SDL_SWSURFACE);
+	SDL_EnableKeyRepeat(0, 0);
+	SDL_PumpEvents();
+}
+
 int main(int argc, char* argv[]) {
-	keys = SDL_GetKeyState(NULL);
+	// keys = SDL_GetKeyState(NULL);
 
 	init_date_time();
 
@@ -501,69 +503,6 @@ int main(int argc, char* argv[]) {
 	signal(SIGTERM,&quit);
 	DBG("");
 
-	char title[64] = "RECOVERY MODE";
-
-#ifdef TARGET_RETROFW
-	memdev = open("/dev/mem", O_RDWR);
-	if (memdev > 0) {
-		mem  = (uint32_t*)mmap(0, 2048, PROT_READ | PROT_WRITE, MAP_SHARED, memdev, GPIO_BASE);
-		if (!(mem[PEPIN] >> 07 & 0b1))	{ keys[BTN_X]			= SDL_PRESSED; }	/* X */
-		if (!(mem[PDPIN] >> 22 & 0b1))	{ keys[BTN_A]			= SDL_PRESSED; }	/* A */
-		if (!(mem[PDPIN] >> 23 & 0b1))	{ keys[BTN_B]			= SDL_PRESSED; }	/* B */
-		if (!(mem[PEPIN] >> 11 & 0b1))	{ keys[BTN_Y]			= SDL_PRESSED; }	/* Y */
-		if (!(mem[PBPIN] >> 23 & 0b1))	{ keys[BTN_L]			= SDL_PRESSED; }	/* L */
-		if (!(mem[PDPIN] >> 24 & 0b1))	{ keys[BTN_R]			= SDL_PRESSED; }	/* R */
-		if ( (mem[PDPIN] >> 18 & 0b1))	{ keys[BTN_START]		= SDL_PRESSED; }	/* START */
-		if ( (mem[PDPIN] >> 17 & 0b1))	{ keys[BTN_SELECT]		= SDL_PRESSED; }	/* SELECT */
-		if (!(mem[PDPIN] >> 21 & 0b1))	{ keys[BTN_BACKLIGHT]	= SDL_PRESSED; }	/* BACKLIGHT */
-		if (!(mem[PAPIN] >> 30 & 0b1))	{ keys[BTN_POWER]		= SDL_PRESSED; }	/* POWER */
-		if (!(mem[PBPIN] >> 25 & 0b1))	{ keys[BTN_UP]			= SDL_PRESSED; }	/* UP */
-		if (!(mem[PBPIN] >> 24 & 0b1))	{ keys[BTN_DOWN]		= SDL_PRESSED; }	/* DOWN */
-		if (!(mem[PDPIN] >> 00 & 0b1))	{ keys[BTN_LEFT]		= SDL_PRESSED; }	/* LEFT */
-		if (!(mem[PBPIN] >> 26 & 0b1))	{ keys[BTN_RIGHT]		= SDL_PRESSED; }	/* RIGHT */
-	}
-	munmap(mem, 2048);
-	close(memdev);
-#endif
-
-	int mode = MODE_UNKNOWN;
-
-	if (((keys[BTN_POWER] == SDL_PRESSED || keys[BTN_SELECT] == SDL_PRESSED) && keys[BTN_Y] == SDL_PRESSED) || (argc > 2 && !strcmp(argv[1], "network") && !strcmp(argv[2], "on"))) {
-		// hold boot - network - no gui - for debugging
-		system("rmmod g_file_storage; modprobe g_ether; ifdown usb0; ifup usb0");
-		if (!(argc > 2 && !strcmp(argv[1], "network") && !strcmp(argv[2], "on"))) {
-			network_ascii();
-		}
-
-		return 0;
-	}
-
-	mode = check_part();
-
-	if (argc > 1 && !strcmp(argv[1], "network")) {
-		sprintf(title, "NETWORK MODE");
-		mode = MODE_NETWORK;
-	} else if (argc > 1 && !strcmp(argv[1], "storage")) {
-		sprintf(title, "USB STORAGE MODE");
-		mode = MODE_UDC;
-	} else if (mode == MODE_RESIZE || (argc > 1 && !strcmp(argv[1], "fatresize"))) {
-		sprintf(title, "PARTITION EXTENDER");
-	} else if (mode == MODE_FSCK || (argc > 1 && !strcmp(argv[1], "fsck"))) {
-		sprintf(title, "FILE SYSTEM CHECK");
-	} else if (mode == MODE_DEFL) {
-		sprintf(title, "DATA RESET");
-	} else if (((keys[BTN_POWER] == SDL_PRESSED || keys[BTN_SELECT] == SDL_PRESSED) && (keys[BTN_B] == SDL_PRESSED || keys[BTN_A] == SDL_PRESSED)) || (argc > 1 && !strcmp(argv[1], "menu"))) {
-		sprintf(title, "RECOVERY MODE");
-		mode = MODE_MENU;
-	} else if (argc > 1 && !strcmp(argv[1], "start")) {
-		mode = MODE_START;
-	} else if (argc > 4 && !strcmp(argv[1], "opk") && !strcmp(argv[2], "run")) {
-		opkrun(argc, argv);
-	} else if (argc > 2 && !strcmp(argv[1], "opk") && (!strcmp(argv[2], "update") || !strcmp(argv[2], "install"))) {
-		opkscan(argc, argv);
-		quit(0); return 0;
-	}
-
 	setenv("SDL_FBCON_DONT_CLEAR", "1", 1);
 	setenv("SDL_NOMOUSE", "1", 1);
 	setenv("TERM", "vt100", 1);
@@ -575,51 +514,86 @@ int main(int argc, char* argv[]) {
 		setenv("SDL_AUDIODRIVER", "alsa", 1);
 	}
 
-	free_tty();
+	int mode = check_part();
 
-	if (mode == MODE_START) {
+	if (mode == MODE_START && argc > 1) {
+		if (!strcmp(argv[1], "network")) {
+			if (argc > 2 && !strcmp(argv[2], "on")) {
+				system("rmmod g_file_storage; modprobe g_ether; ifdown usb0; ifup usb0");
+			} else {
+				network_ascii();
+			}
+			return 0;
+		} else if (!strcmp(argv[1], "cls")) {
+			cls();
+			return 0;
+		} else if (!strcmp(argv[1], "storage")) {
+			mode = MODE_UDC;
+		} else if (!strcmp(argv[1], "fatresize")) {
+			mode == MODE_RESIZE;
+		} else if (!strcmp(argv[1], "fsck")) {
+			mode == MODE_FSCK;
+		} else if (!strcmp(argv[1], "menu")) {
+			mode = MODE_MENU;
+		}
+	}
+
+	cls();
+
+	int memdev = open("/dev/mem", O_RDWR);
+	if (memdev > 0) {
+		uint32_t *mem = (uint32_t*)mmap(0, 2048, PROT_READ | PROT_WRITE, MAP_SHARED, memdev, GPIO_BASE);
+		keys[BTN_A] = !(mem[PDPIN] >> 22 & 0b1); /* A */
+		keys[BTN_B] = !(mem[PDPIN] >> 23 & 0b1); /* B */
+		keys[BTN_X] = !(mem[PEPIN] >> 07 & 0b1); /* X */
+		keys[BTN_Y] = !(mem[PEPIN] >> 11 & 0b1); /* Y */
+		keys[BTN_L] = !(mem[PBPIN] >> 23 & 0b1); /* L */
+		keys[BTN_R] = !(mem[PDPIN] >> 24 & 0b1); /* R */
+		keys[BTN_SELECT]    =  (mem[PDPIN] >> 17 & 0b1); /* SELECT */
+		keys[BTN_START]     =  (mem[PDPIN] >> 18 & 0b1); /* START */
+		keys[BTN_BACKLIGHT] = !(mem[PDPIN] >> 21 & 0b1); /* BACKLIGHT */
+		keys[BTN_POWER]     = !(mem[PAPIN] >> 30 & 0b1); /* POWER */
+		keys[BTN_UP]        = !(mem[PBPIN] >> 25 & 0b1); /* UP */
+		keys[BTN_DOWN]      = !(mem[PBPIN] >> 24 & 0b1); /* DOWN */
+		keys[BTN_LEFT]      = !(mem[PDPIN] >> 00 & 0b1); /* LEFT */
+		keys[BTN_RIGHT]     = !(mem[PBPIN] >> 26 & 0b1); /* RIGHT */
+		munmap(mem, 2048);
+		close(memdev);
+	} else {
+		sdl_init();
+	}
+
+	if (keys[BTN_POWER] == SDL_PRESSED || keys[BTN_SELECT] == SDL_PRESSED) {
+		if (keys[BTN_Y] == SDL_PRESSED) {
+			network_ascii();
+		}
+		if (keys[BTN_B] == SDL_PRESSED || keys[BTN_A] == SDL_PRESSED) {
+			mode = MODE_MENU;
+		}
+	}
+
+	if (mode == MODE_START) { // if mode is still MODE_START...
+		SDL_Quit();
+
 		if (file_exists("/root/swap.img") || file_exists("/root/local/swap.img")) {
 			system("swapon /root/swap.img /root/local/swap.img");
 		}
 
 		if (file_exists("/media/mmcblk1p1/autoexec.sh")) {
 			execlp("/bin/sh", "/bin/sh", "-c", "source /media/mmcblk1p1/autoexec.sh", NULL);
-			usleep(5000000);
 		} else if (file_exists("/home/retrofw/autoexec.sh")) {
 			execlp("/bin/sh", "/bin/sh", "-c", "source /home/retrofw/autoexec.sh", NULL);
-			usleep(5000000);
 		} else if (execlp("/usr/bin/gmenunx", "/usr/bin/gmenunx", NULL)) {
-			usleep(5000000);
+			// gmenunx start
 		} else if (execlp("/home/retrofw/apps/gmenu2x/gmenu2x", "/home/retrofw/apps/gmenu2x/gmenu2x", NULL)) {
-			usleep(5000000);
-		} else {
-			mode = MODE_MENU;
-			system("modprobe fbcon");
+			// gmenu2x start
 		}
-	}
 
-	if (mode == MODE_UNKNOWN || mode == MODE_START) {
 		quit(0);
 		return 0;
 	}
 
-	printf("%s\n", title);
-
-	SDL_Rect rect = {0};
-
-	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-		printf("Could not initialize SDL: %s\n", SDL_GetError());
-		udc();
-		return -1;
-	}
-	SDL_PumpEvents();
-	SDL_ShowCursor(0);
-
-	screen = SDL_SetVideoMode(WIDTH, HEIGHT, 16, SDL_SWSURFACE);
-
-	SDL_EnableKeyRepeat(0, 0);
-	SDL_Delay(50);
-	SDL_PumpEvents();
+	sdl_init();
 
 	if (TTF_Init() == -1) {
 		printf("TTF_Init: %s\n", SDL_GetError());
@@ -648,9 +622,6 @@ int main(int argc, char* argv[]) {
 		case MODE_UDC:
 			udc();
 			break;
-		case MODE_NETWORK:
-			network_ascii();
-			break;
 		case MODE_MENU:
 			goto mode_menu;
 			break;
@@ -661,7 +632,7 @@ int main(int argc, char* argv[]) {
 
 	int selected = 0;
 	while (1) {
-		nextline = draw_screen(title, "A: SELECT");
+		nextline = draw_screen("RECOVERY MODE", "A: SELECT");
 
 		for (int i = 0; i < cb_size; i++) {
 			SDL_Color selColor = txtColor;
