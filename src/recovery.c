@@ -336,9 +336,9 @@ void format_ext() {
 			system("(echo o; echo n; echo p; echo 1; echo  ; echo  ; echo w; ) | fdisk /dev/mmcblk1");
 			// system("echo 'start=2048, type=83' | sfdisk /dev/mmcblk1");
 
-			system("sync; partprobe; mdev -s");
+			system("sync; partprobe");
 			system("mkfs.vfat -F32 -va -n 'RETROFW_SD' /dev/mmcblk1p1");
-			system("mdev -s; mount -a");
+			system("mount -a");
 
 			nextline = draw_text(10, nextline, "Done.", txtColor);
 			SDL_Flip(screen);
@@ -418,7 +418,7 @@ void stop() {
 	system("echo '' > /sys/devices/platform/musb_hdrc.0/gadget/gadget-lun1/file");
 	system("sync");
 	system("killall dnsmasq; rmmod g_ether; rmmod g_file_storage");
-	system("mdev -s; mount -a");
+	system("mount -a");
 }
 
 void opkrun(int argc, char* argv[]) {
