@@ -3,7 +3,6 @@
 #include <SDL/SDL_ttf.h>
 #include "font.h"
 #include "background.h"
-#include "opkscan.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -435,23 +434,6 @@ void opkrun(int argc, char* argv[]) {
 
 	chdir("/mnt");
 	execlp("/bin/sh", "/bin/sh", "-c", buf, NULL);
-}
-
-void opkscan(int argc, char* argv[]) {
-#ifdef TARGET_RETROFW
-	// FILE *fp = popen("gunzip | sh > /dev/null", "w");
-	snprintf(buf, sizeof(buf), "gunzip | sh -s - ");
-	for (uint32_t i = 3; i < argc; i++) {
-		strcat(buf, "\"");
-		strcat(buf, argv[i]);
-		strcat(buf, "\" ");
-	}
-
-	FILE *fp = popen(buf, "w");
-	if (!fp) return;
-	for (uint16_t i = 0; i < sizeof(_opkscan) ; i++) fputc(_opkscan[i], fp);
-	pclose(fp);
-#endif
 }
 
 void free_tty() {
