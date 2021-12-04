@@ -252,8 +252,7 @@ void udc() {
 
 	SDL_Flip(screen);
 
-	system("rmmod g_ether; rmmod g_file_storage");
-	system("modprobe g_file_storage");
+	system("rmmod g_ether; rmmod g_file_storage; modprobe g_file_storage");
 	system("echo \"\" > /sys/devices/platform/musb_hdrc.0/gadget/gadget-lun1/file; echo \"$(ls --color=never /dev/mmcblk0* | tail -n 1)\" > /sys/devices/platform/musb_hdrc.0/gadget/gadget-lun1/file");
 	system("echo \"\" > /sys/devices/platform/musb_hdrc.0/gadget/gadget-lun0/file; echo \"$(ls --color=never /dev/mmcblk1* | tail -n 1)\" > /sys/devices/platform/musb_hdrc.0/gadget/gadget-lun0/file");
 
@@ -519,7 +518,7 @@ int main(int argc, char* argv[]) {
 	if (mode == MODE_START && argc > 1) {
 		if (!strcmp(argv[1], "network")) {
 			if (argc > 2 && !strcmp(argv[2], "on")) {
-				system("rmmod g_file_storage; modprobe g_ether; ifdown usb0; ifup usb0");
+				system("rmmod g_file_storage; modprobe g_ether; ifup usb0");
 			} else {
 				network_ascii();
 			}
