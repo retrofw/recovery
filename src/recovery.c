@@ -366,8 +366,8 @@ void fatresize() {
 	system("rm /boot/.prsz");
 	system("sync; swapoff -a");
 	system("umount -fl /home/retrofw /dev/mmcblk*");
-	system("echo \"start=278527, size=128M, type=82\" | sfdisk --append --no-reread /dev/mmcblk0");
-	system("echo \"start=540671, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
+	system("echo \"start=278528, size=128M, type=82\" | sfdisk --append --no-reread /dev/mmcblk0");
+	system("echo \"start=540672, type=c\" | sfdisk --append --no-reread /dev/mmcblk0");
 	system("partprobe");
 #endif
 
